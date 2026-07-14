@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>課表編排器</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📅</text></svg>">
+</head>
+<body>
+<header class="app-header">
+  <div class="app-title">
+    <h1>📅 課表編排器</h1>
+    <p class="subtitle">國小・國中・高中 全年級課表編排工具</p>
+  </div>
+  <div class="header-actions">
+    <span id="save-indicator" class="save-indicator">已自動儲存</span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="tab-btn active" data-tab="settings">⚙️ 基本設定</button>
+  <button class="tab-btn" data-tab="subjects">📚 科目</button>
+  <button class="tab-btn" data-tab="teachers">👩‍🏫 教師</button>
+  <button class="tab-btn" data-tab="rooms">🏫 專科教室</button>
+  <button class="tab-btn" data-tab="classes">🎒 班級</button>
+  <button class="tab-btn" data-tab="courses">📋 授課設定</button>
+  <button class="tab-btn" data-tab="schedule">🗓️ 課表編排</button>
+</nav>
+
+<main id="tab-content"></main>
+
+<div id="toast" class="toast"></div>
+
+<footer class="app-footer">
+  資料儲存於瀏覽器中，建議定期於「基本設定」匯出 JSON 備份。
+</footer>
+
+<script src="js/store.js"></script>
+<script src="js/solver.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
