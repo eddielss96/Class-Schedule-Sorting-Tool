@@ -437,6 +437,42 @@ input[type="color"] {
 .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 .toast.error { background: #991b1b; }
 
+/* ---------- 匯出對話框與列印頁 ---------- */
+
+.dialog h4 { margin: 12px 0 4px; font-size: 14px; }
+.radio-group { display: flex; flex-direction: column; gap: 4px; }
+.radio-row { display: flex; align-items: center; gap: 4px; font-size: 14px; cursor: pointer; padding: 4px 6px; border-radius: 6px; }
+.radio-row:hover { background: #f3f4f6; }
+
+#print-export { display: none; }
+
+@media print {
+  body.export-mode > *:not(#print-export) { display: none !important; }
+  body.export-mode #print-export { display: block; }
+  #print-export .print-page { page-break-after: always; }
+  #print-export .print-page:last-child { page-break-after: auto; }
+}
+
+#print-export .print-page { font-family: "DFKai-SB", "標楷體", "BiauKai", "Noto Sans TC", serif; color: #000; }
+#print-export h2 { text-align: center; font-size: 20pt; margin: 0 0 6pt; font-weight: 700; }
+#print-export .print-subtitle { text-align: center; font-size: 13pt; margin: 0 0 8pt; }
+#print-export .export-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+#print-export .export-table th,
+#print-export .export-table td {
+  border: 1.2pt solid #000;
+  text-align: center;
+  vertical-align: middle;
+  padding: 4pt 2pt;
+  font-size: 11pt;
+  line-height: 1.35;
+  overflow: hidden;
+}
+#print-export .export-table th:first-child { width: 13%; }
+#print-export .export-table th { font-weight: 700; background: #fff; }
+#print-export .export-table td { height: 42pt; }
+#print-export .export-table td.off { background: #d9d9d9; }
+#print-export .print-note { font-size: 11pt; margin: 8pt 0 0; text-align: left; }
+
 /* ---------- 列印 ---------- */
 
 @media print {

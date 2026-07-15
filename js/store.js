@@ -36,7 +36,11 @@ const Store = (() => {
       settings: {
         numDays: 5,
         numPeriods: 8,
-        periodLabels: makePeriodLabels(8)
+        periodLabels: makePeriodLabels(8),
+        school: '',
+        schoolYear: '',
+        term: '',
+        note: ''
       },
       subjects: [],
       teachers: [],
@@ -68,13 +72,18 @@ const Store = (() => {
       st.periodLabels.push('第 ' + (st.periodLabels.length + 1) + ' 節');
     }
     st.periodLabels = st.periodLabels.slice(0, st.numPeriods);
+    ['school', 'schoolYear', 'term', 'note'].forEach(k => { if (typeof st[k] !== 'string') st[k] = ''; });
 
     const inRange = key => {
       const { day, period } = parseSlot(key);
       return day >= 0 && day < st.numDays && period >= 0 && period < st.numPeriods;
     };
     s.teachers.forEach(t => { t.unavailable = (t.unavailable || []).filter(inRange); });
-    s.classes.forEach(c => { c.blocked = (c.blocked || []).filter(inRange); });
+    const tIds = new Set(s.teachers.map(x => x.id));
+    s.classes.forEach(c => {
+      c.blocked = (c.blocked || []).filter(inRange);
+      if (c.homeroomTeacherId && !tIds.has(c.homeroomTeacherId)) c.homeroomTeacherId = '';
+    });
 
     const subjectIds = new Set(s.subjects.map(x => x.id));
     const teacherIds = new Set(s.teachers.map(x => x.id));
@@ -168,6 +177,10 @@ const Store = (() => {
     s.settings.numDays = 5;
     s.settings.numPeriods = 7;
     s.settings.periodLabels = ['第 1 節', '第 2 節', '第 3 節', '第 4 節', '第 5 節', '第 6 節', '第 7 節'];
+    s.settings.school = '快樂國小';
+    s.settings.schoolYear = '115';
+    s.settings.term = '第一學期';
+    s.settings.note = '※ 本課表自 115.09.01 起實施。';
 
     const subj = (name, i) => ({ id: 'sub' + i, name, color: PALETTE[i % PALETTE.length] });
     const subjectNames = ['國語', '數學', '英語', '自然', '社會', '體育', '音樂', '美勞', '電腦'];
@@ -187,7 +200,8 @@ const Store = (() => {
     s.classes = classNames.map((name, i) => ({
       id: 'cls' + i,
       name,
-      blocked: i < 2 ? lowGradeBlocked.slice() : []
+      blocked: i < 2 ? lowGradeBlocked.slice() : [],
+      homeroomTeacherId: 'tch' + i
     }));
 
     const homeroomNames = ['陳老師', '林老師', '黃老師', '張老師', '李老師', '王老師'];

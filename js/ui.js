@@ -161,6 +161,26 @@ const UI = (() => {
         collapsible('節次名稱（可自訂，如「早自習」「午休後第一節」）', el('div', { class: 'label-list' }, labelRows), false)
       ]),
       el('section', { class: 'card' }, [
+        el('h2', { text: '課表標題（匯出用）' }),
+        el('p', { class: 'hint', text: '匯出 Word / PDF 課表時的標題資訊，組成如「永平高中111學年度第二學期課程表」。' }),
+        el('div', { class: 'field' }, [el('label', { text: '學校名稱' }), el('input', {
+          type: 'text', value: st.school, placeholder: '例：永平高中', class: 'grow',
+          onchange: e => { st.school = e.target.value.trim(); commit(false); }
+        })]),
+        el('div', { class: 'field' }, [el('label', { text: '學年度' }), el('input', {
+          type: 'text', value: st.schoolYear, placeholder: '例：114',
+          onchange: e => { st.schoolYear = e.target.value.trim(); commit(false); }
+        })]),
+        el('div', { class: 'field' }, [el('label', { text: '學期' }), el('input', {
+          type: 'text', value: st.term, placeholder: '例：第一學期',
+          onchange: e => { st.term = e.target.value.trim(); commit(false); }
+        })]),
+        el('div', { class: 'field' }, [el('label', { text: '備註文字' }), el('input', {
+          type: 'text', value: st.note, placeholder: '例：※ 本課表自 114.09.01 起實施。（印在課表下方，可留空）', class: 'grow',
+          onchange: e => { st.note = e.target.value.trim(); commit(false); }
+        })])
+      ]),
+      el('section', { class: 'card' }, [
         el('h2', { text: '資料管理' }),
         el('p', { class: 'hint', text: '所有資料自動儲存在這個瀏覽器中。換電腦或備份請用匯出 / 匯入。' }),
         el('div', { class: 'btn-row' }, [
@@ -350,12 +370,21 @@ const UI = (() => {
       const demand = s.courses.filter(x => x.classId === c.id).reduce((sum, x) => sum + x.periods, 0);
       const over = demand > capacity;
       const grid = slotGrid(set, updated => { c.blocked = [...updated]; Store.normalize(s); commit(); }, { small: true, markText: '—' });
+      const homeroomSel = el('select', {
+        title: '導師（顯示於匯出課表的副標）',
+        onchange: e => { c.homeroomTeacherId = e.target.value; commit(false); }
+      }, [el('option', { value: '', text: '導師（未指定）' })].concat(s.teachers.map(t => {
+        const opt = el('option', { value: t.id, text: '導師：' + t.name });
+        if (c.homeroomTeacherId === t.id) opt.selected = true;
+        return opt;
+      })));
       list.appendChild(el('div', { class: 'entity-block' }, [
         el('div', { class: 'entity-row' }, [
           el('input', {
             type: 'text', value: c.name, class: 'grow',
             onchange: e => { c.name = e.target.value.trim() || c.name; commit(); }
           }),
+          homeroomSel,
           el('span', {
             class: 'badge' + (over ? ' bad' : ''),
             text: '需 ' + demand + ' 節 / 可排 ' + capacity + ' 節'
@@ -629,7 +658,8 @@ const UI = (() => {
             commit();
           }
         }),
-        el('button', { class: 'btn', text: '🖨️ 列印', onclick: () => window.print() })
+        el('button', { class: 'btn', text: '⬇️ 匯出 Word / PDF', onclick: () => openExportDialog() }),
+        el('button', { class: 'btn', text: '🖨️ 列印', title: '直接列印目前畫面', onclick: () => window.print() })
       ])
     ]);
 
@@ -652,6 +682,79 @@ const UI = (() => {
     if (scheduleView.mode === 'class') renderClassSchedule(root, conflicts);
     else if (scheduleView.mode === 'teacher') renderTeacherSchedule(root, conflicts);
     else renderOverview(root, conflicts);
+  }
+
+  /** 匯出對話框：格式（Word / PDF）× 範圍（本頁 / 全部班級 / 全部教師） */
+  function openExportDialog() {
+    const s = Store.state;
+    const choice = { format: 'docx', scope: null };
+
+    // 預設範圍：目前檢視的班級 / 教師；總覽模式預設全部班級
+    const canOne = scheduleView.mode !== 'overview' && scheduleView.id;
+    choice.scope = canOne ? 'one' : 'all-class';
+
+    const overlay = el('div', { class: 'overlay', onclick: e => { if (e.target === overlay) overlay.remove(); } });
+
+    const radio = (name, value, label, checked, onpick) => el('label', { class: 'radio-row' }, [
+      el('input', Object.assign({ type: 'radio', name, value, onchange: () => onpick(value) }, checked ? { checked: '' } : {})),
+      document.createTextNode(' ' + label)
+    ]);
+
+    const currentName = canOne
+      ? (scheduleView.mode === 'class' ? nameOf(s.classes, scheduleView.id) : nameOf(s.teachers, scheduleView.id))
+      : '';
+
+    const scopeRows = [];
+    if (canOne) {
+      scopeRows.push(radio('exp-scope', 'one',
+        '目前檢視：' + (scheduleView.mode === 'class' ? '班級' : '教師') + '「' + currentName + '」',
+        true, v => { choice.scope = v; }));
+    }
+    scopeRows.push(radio('exp-scope', 'all-class', '全部班級課表（' + s.classes.length + ' 頁，一頁一班）', !canOne, v => { choice.scope = v; }));
+    scopeRows.push(radio('exp-scope', 'all-teacher', '全部教師課表（' + s.teachers.length + ' 頁，一頁一師）', false, v => { choice.scope = v; }));
+
+    const titlePreview = (() => {
+      const st = s.settings;
+      const parts = [];
+      if (st.school) parts.push(st.school);
+      if (st.schoolYear) parts.push(st.schoolYear + '學年度');
+      if (st.term) parts.push(st.term);
+      parts.push('課程表');
+      return parts.join('');
+    })();
+
+    overlay.appendChild(el('div', { class: 'dialog' }, [
+      el('h3', { text: '匯出課表' }),
+      el('p', { class: 'hint', text: '標題：「' + titlePreview + '」（可至「基本設定 → 課表標題」修改學校、學年度、學期與備註）' }),
+      el('h4', { text: '檔案格式' }),
+      el('div', { class: 'radio-group' }, [
+        radio('exp-fmt', 'docx', 'Word（.docx）— 直接下載檔案', true, v => { choice.format = v; }),
+        radio('exp-fmt', 'pdf', 'PDF — 開啟列印畫面，於對話框選「另存為 PDF」', false, v => { choice.format = v; })
+      ]),
+      el('h4', { text: '匯出範圍' }),
+      el('div', { class: 'radio-group' }, scopeRows),
+      el('div', { class: 'btn-row' }, [
+        el('button', {
+          class: 'btn primary', text: '匯出',
+          onclick: () => {
+            let kind, scope, currentId = null;
+            if (choice.scope === 'one') {
+              kind = scheduleView.mode === 'class' ? 'class' : 'teacher';
+              scope = 'one';
+              currentId = scheduleView.id;
+            } else {
+              kind = choice.scope === 'all-class' ? 'class' : 'teacher';
+              scope = 'all';
+            }
+            const result = ExportKit.exportSchedules(s, kind, scope, choice.format, currentId);
+            toast(result.message, !result.ok);
+            if (result.ok) overlay.remove();
+          }
+        }),
+        el('button', { class: 'btn', text: '取消', onclick: () => overlay.remove() })
+      ])
+    ]));
+    document.body.appendChild(overlay);
   }
 
   function placementAt(placements, courseById, filterFn, day, period) {
